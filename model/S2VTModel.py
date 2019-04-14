@@ -24,23 +24,31 @@ class S2VTModel(nn.Module):
 
         word_vectors = glove_loader.word_vectors
         word_vectors = np.vstack(word_vectors)
-        vocab_size = word_vectors.shape[0]
-        embed_size = word_vectors.shape[1]
+        self.vocab_size = word_vectors.shape[0]
+        self.embed_size = word_vectors.shape[1]
+        self.vid_feat_size = vid_feat_size
 
         self.max_len = max_len
-        self.pad_id = glove_loader.get_id('<pad>')
         self.sos_id = glove_loader.get_id('<sos>')
-        self.vid_pad = torch.Parameter(torch.randn(vid_feat_size))
 
-        self.embedding = nn.Embedding(vocab_size, embed_size)
-        self.embedding.load_state_dict({'weight': torch.Tensor(word_vectors)})
+        self.embedding = nn.Sequential(
+            nn.Embedding(self.vocab_size, self.embed_size),
+            nn.Dropout(p=dropout_p))
+        self.embedding[0].load_state_dict({'weight': torch.Tensor(word_vectors)})
 
         self.rnn1 = nn.LSTM(input_size=vid_feat_size, hidden_size=hidden_size, \
-            num_layers=1, dropout_p=dropout_p)
-        self.rnn2 = nn.LSTM(input_size=hidden_size + embed_size, hidden_size=hidden_size, \
-            num_layers=1, dropout_p=dropout_p)
+            num_layers=1)
+        self.rnn2 = nn.LSTM(input_size=hidden_size + self.embed_size, hidden_size=hidden_size, \
+            num_layers=1)
 
-        self.linear = nn.Linear(hidden_size, vocab_size)
+        self.drop = nn.Dropout(p=dropout_p)
+        self.linear = nn.Linear(hidden_size, self.vocab_size)
+
+        self.reset_parameters()
+
+    def reset_parameters(self):
+        """Initialize network weights using Xavier init (with bias 0.01)"""
+        self.apply(ixvr)
 
     def forward(self, vid_feats, s=None):
         """
@@ -60,6 +68,7 @@ class S2VTModel(nn.Module):
         """
         if self.training:
             assert s is not None
+        device = torch.device("cuda" if next(self.parameters()).is_cuda else "cpu")
 
         batch_size = vid_feats.shape[0]
         num_frames = vid_feats.shape[1]
@@ -69,30 +78,29 @@ class S2VTModel(nn.Module):
         # N x B x V
         output1, state1 = self.rnn1(vid_feats)
         # output1 - (N x B x H)
-        word_padding = torch.ones((num_frames, batch_size), dtype=torch.long) * self.pad_id
-        # N x B
-        word_padding = self.embedding(word_padding)
+        word_padding = torch.zeros((num_frames, batch_size, self.embed_size)).to(device)
         # N x B x E
-        output1 = torch.cat((output1, word_padding), dim=2)
+        output1 = self.drop(torch.cat((output1, word_padding), dim=2))
         # N x B x (H + E)
         _, state2 = self.rnn2(output1)
 
         if self.training:
             # uses teacher forcing
-            vid_feats = self.vid_pad.expand(max_len, batch_size, -1)
+            vid_feats = torch.zeros((max_len, batch_size, self.vid_feat_size)).to(device)
             # L x B x V
             output1, _ = self.rnn1(vid_feats, state1)
             # L x B x H
             sos_tags = torch.ones((batch_size, 1), dtype=torch.long) * self.sos_id
+            sos_tags = sos_tags.to(device)
             s = torch.cat((sos_tags, s), dim=1)[:,:-1]
             # right shifted sentence - (B x L)
             s = self.embedding(s).transpose(0, 1)
             # L x B x E
-            output1 = torch.cat((output1, s), dim=2)
+            output1 = self.drop(torch.cat((output1, s), dim=2))
             # L x B x (H + E)
             output2, _ = self.rnn2(output1, state2)
             # L x B x H
-            output2 = torch.transpose(output2, 0, 1)
+            output2 = torch.transpose(output2, 0, 1).contiguous()
             # B x L x H
             logits = self.linear(output2.view(batch_size * max_len, -1))
             logits = logits.view(batch_size, max_len, -1)
@@ -100,9 +108,10 @@ class S2VTModel(nn.Module):
             return logits
         else:
             # need to do rollouts
-            vid_frames = self.vid_pad.expand(1, batch_size, -1)
+            vid_frames = torch.zeros((1, batch_size, self.vid_feat_size)).to(device)
             # 1 x B x V
             curr_words = torch.ones((1, batch_size), dtype=torch.long) * self.sos_id
+            curr_words = curr_words.to(device)
             # 1 x B
             logits = None
 
@@ -111,7 +120,7 @@ class S2VTModel(nn.Module):
                 # 1 x B x H
                 curr_words = self.embedding(curr_words)
                 # 1 x B x E
-                output1 = torch.cat((output1, curr_words), dim=2)
+                output1 = self.drop(torch.cat((output1, curr_words), dim=2))
                 # 1 x B x (H + E)
                 output2, state2 = self.rnn2(output1, state2)
                 # 1 x B x H
@@ -124,7 +133,7 @@ class S2VTModel(nn.Module):
                 else:
                     logits = torch.cat((logits, outs.unsqueeze(0)), dim=0)
 
-            logits = torch.transpose(logits, 0, 1)
+            logits = torch.transpose(logits, 0, 1).contiguous()
             # B x L x vocab_size
             
             return logits

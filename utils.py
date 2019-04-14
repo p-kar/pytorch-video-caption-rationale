@@ -114,3 +114,18 @@ def ixvr(input_layer, bias_val=0.01):
             nn.init.constant_(input_layer.bias, bias_val);
 
     return input_layer
+
+class StreamSampler:
+    def __init__(self, num_samples):
+        self.num_samples = num_samples
+        self.samples = []
+
+    def add(self, obj):
+        self.samples.append((random.random(), obj))
+        sorted(self.samples, key=lambda x: x[0])
+        if len(self.samples) > self.num_samples:
+            self.samples = self.samples[:-1]
+
+    def get(self):
+        return [s[1] for s in self.samples]
+

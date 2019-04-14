@@ -61,9 +61,9 @@ class MSVideoDescriptionDataset(Dataset):
         sent = torch.LongTensor(self._parse(sent_toks))
         sent_len = min(self.maxlen, len(sent_toks) + 1)
         # Reference sentences for non-training splits
-        refs = None
-        if self.split != 'train':
-            refs = [' '.join(cap['desc']) for cap in self.captions[idx]['captions']]
+        refs = []
+        # if self.split != 'train':
+        refs = [' '.join(cap['desc']).lower() for cap in self.captions[idx]['captions']]
 
-        return {'sent': sent, 'sent_raw': sent_raw, 'sent_len': sent_len, 'vid_feats': vid_feats, 'refs': refs}
+        return {'sent': sent, 'sent_raw': sent_raw, 'sent_len': sent_len, 'vid_feats': vid_feats, 'refs': refs, 'vid_key': video_key}
 

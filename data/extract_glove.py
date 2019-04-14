@@ -41,7 +41,7 @@ def extract_glove(opts):
     vocab = list(vocab)
 
     for glove_file in glove_files:
-        print('Processing {}...'.format(glove_file), end='')
+        print('Processing {}...'.format(glove_file), end='', flush=True)
         word_to_index, index_to_word, word_vectors = load_glove_file(os.path.join(glove_dir, glove_file))
         words = []
         indexes = []

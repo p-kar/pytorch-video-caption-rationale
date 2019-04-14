@@ -1,7 +1,9 @@
 import os
 import pdb
+
 from utils import *
 from args import get_args
+from train import train
 from data.extract_glove import extract_glove
 from data.extract_captions import extract_captions
 from data.extract_video_feats import extract_video_feats
@@ -17,6 +19,8 @@ if __name__ == '__main__':
         extract_video_feats(opts)
     elif opts.mode == 'extract_glove':
         extract_glove(opts)
+    elif opts.mode == 'train':
+        train(opts)
     else:
         raise NotImplementedError('unrecognized mode')
 
