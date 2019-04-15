@@ -42,16 +42,20 @@ def extract_frames(video_file, dst):
 
 def extract_video_feats(opts):
     """Extract ImageNet features from video clips"""
-    video_clips_dir = os.path.join(opts.data_dir, 'clips/')
-    video_clips = [f for f in os.listdir(video_clips_dir) if f.endswith('.avi')]
-    feats_dir = os.path.join(opts.data_dir, 'feats/')
+    corpus_base_dir = os.path.join(opts.data_dir, opts.corpus)
+    video_clips_dir = os.path.join(corpus_base_dir, 'clips/')
+    if opts.corpus == 'msvd':
+        file_ext = '.avi'
+    elif opts.corpus == 'msr-vtt':
+        file_ext = '.mp4'
+    else:
+        raise NotImplementedError('unknown corpus')
+    video_clips = [f for f in os.listdir(video_clips_dir) if f.endswith(file_ext)]
+    feats_dir = os.path.join(corpus_base_dir, 'feats/')
     if os.path.exists(feats_dir):
         shutil.rmtree(feats_dir)
     os.makedirs(feats_dir)
-    frames_dir = os.path.join(opts.data_dir, 'frames/')
-    if os.path.exists(frames_dir):
-        shutil.rmtree(frames_dir)
-    os.makedirs(frames_dir)
+    frames_dir = os.path.join(corpus_base_dir, 'frames/')
     
     if opts.vision_arch == 'resnet18':
         model = models.resnet18(pretrained=True)
@@ -68,10 +72,12 @@ def extract_video_feats(opts):
     for video in tqdm(video_clips):
         video_path = os.path.join(video_clips_dir, video)
         video_base_name = os.path.splitext(os.path.basename(video_path))[0]
-        dst_dir = os.path.join(frames_dir, video_base_name)
-        extract_frames(video_path, dst_dir)
+        if os.path.exists(frames_dir):
+            shutil.rmtree(frames_dir)
 
-        frame_list = sorted(glob.glob(os.path.join(dst_dir, '*.jpg')))
+        extract_frames(video_path, frames_dir)
+
+        frame_list = sorted(glob.glob(os.path.join(frames_dir, '*.jpg')))
         if len(frame_list) > opts.num_frames:
             frame_indices = np.linspace(0, len(frame_list), num=opts.num_frames, endpoint=False).astype(int)
         else:

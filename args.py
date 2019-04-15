@@ -15,6 +15,7 @@ def get_args():
 
     # DataLoader
     parser.add_argument('--data_dir', default='./data', type=str, help='root directory of the dataset')
+    parser.add_argument('--corpus', default='msr-vtt', type=str, help='video captioning corpus to use')
     parser.add_argument('--nworkers', default=4, type=int, help='number of data loading workers')
     parser.add_argument('--bsize', default=32, type=int, help='mini-batch size')
     parser.add_argument('--shuffle', default='True', type=str2bool, help='shuffle the data?')
@@ -50,5 +51,8 @@ def get_args():
     parser.add_argument('--seed', default=123, type=int, help='seed for initializing training')
 
     args = parser.parse_args()
+
+    if args.corpus not in ['msvd', 'msr-vtt']:
+        raise NotImplementedError('Unknown corpus')
 
     return args
