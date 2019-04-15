@@ -1,6 +1,7 @@
 import pdb
 import sys
 import torch
+import random
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
@@ -30,6 +31,8 @@ class S2VTModel(nn.Module):
 
         self.max_len = max_len
         self.sos_id = glove_loader.get_id('<sos>')
+
+        self.teacher_force_prob = 1.0
 
         self.embedding = nn.Sequential(
             nn.Embedding(self.vocab_size, self.embed_size),
@@ -86,25 +89,41 @@ class S2VTModel(nn.Module):
         _, state2 = self.rnn2(output1)
 
         if self.training:
-            # uses teacher forcing
-            vid_feats = torch.zeros((max_len, batch_size, self.vid_feat_size)).to(device)
-            # L x B x V
-            output1, _ = self.rnn1(vid_feats, state1)
-            # L x B x H
+            # uses teacher forcing with scheduled sampling
+            vid_feats = torch.zeros((1, batch_size, self.vid_feat_size)).to(device)
+            # 1 x B x V
             sos_tags = torch.ones((batch_size, 1), dtype=torch.long) * self.sos_id
             sos_tags = sos_tags.to(device)
-            s = torch.cat((sos_tags, s), dim=1)[:,:-1]
-            # right shifted sentence - (B x L)
-            s = self.embedding(s).transpose(0, 1)
-            # L x B x E
-            output1 = torch.cat((output1, s), dim=2)
-            # L x B x (H + E)
-            output2, _ = self.rnn2(output1, state2)
-            # L x B x H
-            output2 = torch.transpose(output2, 0, 1).contiguous()
-            # B x L x H
-            logits = self.linear(output2.view(batch_size * max_len, -1))
-            logits = logits.view(batch_size, max_len, -1)
+            s = torch.cat((sos_tags, s), dim=1)
+            # right shifted sentence - (B x (L + 1))
+            curr_words = s[:, 0].unsqueeze(0)
+            # 1 x B
+            logits = None
+
+            for i in range(max_len):
+                output1, state1 = self.rnn1(vid_feats, state1)
+                # 1 x B x H
+                curr_words = self.embedding(curr_words)
+                # 1 x B x E
+                output1 = torch.cat((output1, curr_words), dim=2)
+                # 1 x B x (H + E)
+                output2, state2 = self.rnn2(output1, state2)
+                # 1 x B x H
+                outs = self.linear(output2.squeeze())
+                _, curr_words = torch.max(outs, dim=1)
+                curr_words = curr_words.unsqueeze(0)
+                # 1 x B
+                if random.random() < self.teacher_force_prob:
+                    # with teacher forcing prob keep the teacher word
+                    curr_words = s[:, i + 1].unsqueeze(0)
+                # 1 x B
+                if logits is None:
+                    logits = outs.unsqueeze(0)
+                else:
+                    logits = torch.cat((logits, outs.unsqueeze(0)), dim=0)
+
+            logits = torch.transpose(logits, 0, 1).contiguous()
+            # B x L x vocab_size
 
             return logits
         else:

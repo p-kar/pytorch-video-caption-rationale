@@ -32,6 +32,7 @@ def get_args():
     parser.add_argument('--max_len', default=20, type=int, help='max length of the sentence')
     parser.add_argument('--dropout_p', default=0.2, type=float, help='dropout probability')
     parser.add_argument('--hidden_size', default=512, type=int, help='hidden layer size')
+    parser.add_argument('--schedule_sample', default=True, type=str2bool, help='perform schedule sampling while training')
 
     # Optimization Parameters
     parser.add_argument('--optim', default='adam', type=str, help='optimizer type')

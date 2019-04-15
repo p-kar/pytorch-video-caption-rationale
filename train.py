@@ -26,6 +26,17 @@ from logger import TensorboardXLogger
 use_cuda = torch.cuda.is_available()
 device = torch.device("cuda" if use_cuda else "cpu")
 
+def inverse_sigmoid(l, k = 140.0):
+    """
+    Args:
+        l: size of the inverse sigmoid array desired
+    Output:
+        np.array of size l with the inverse sigmoid probs
+        eg. for l = 1000 starts at 0.9929078 and ends at
+        0.1002841
+    """
+    return k / (k + np.exp(np.arange(l) / k))
+
 def calc_sentence_mask(batch_size, max_len, s_len):
     """
     Args:
@@ -179,6 +190,11 @@ def train(opts):
     else:
         raise NotImplementedError("Unknown optim type")
 
+    if opts.schedule_sample:
+        sample_probs = inverse_sigmoid(opts.epochs)
+    else:
+        sample_probs = np.ones(opts.epochs)
+
     criterion = nn.CrossEntropyLoss(reduction='none')
     metrics_to_omit = ['Bleu_1', 'Bleu_2', 'Bleu_3', 'Bleu_4', \
         'ROUGE_L', 'CIDEr', 'SkipThoughtCS', \
@@ -210,6 +226,7 @@ def train(opts):
 
     for epoch in range(opts.start_epoch, opts.epochs):
         model.train()
+        model.teacher_force_prob = sample_probs[epoch]
         logger.step()
 
         sampler = StreamSampler(opts.n_sample_sent)
