@@ -31,4 +31,3 @@ python -u $code_root/driver.py \
 	--n_sample_sent __N_SAMPLE_SENT__ \
 	--resume __RESUME__ \
 	--seed __SEED__
-
