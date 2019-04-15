@@ -166,7 +166,7 @@ def train(opts):
         raise NotImplementedError('Unknown model architecture')
 
     if opts.optim == 'adam':
-        optimizer = torch.optim.Adam([p for p in model.parameters() if p.requires_grad], lr=opts.lr, weight_decay=opts.wd)
+        optimizer = torch.optim.Adam(model.parameters(), lr=opts.lr, weight_decay=opts.wd)
     else:
         raise NotImplementedError("Unknown optim type")
 
