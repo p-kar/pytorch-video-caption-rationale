@@ -135,6 +135,7 @@ data/msrvtt/glove
 data/**/*.json
 data/**/*.txt
 data/**/*.csv
+*.zip
 
 logs/
 runs/

@@ -41,8 +41,9 @@ class S2VTModel(nn.Module):
         self.rnn2 = nn.LSTM(input_size=hidden_size + self.embed_size, hidden_size=hidden_size, \
             num_layers=1)
 
-        self.drop = nn.Dropout(p=dropout_p)
-        self.linear = nn.Linear(hidden_size, self.vocab_size)
+        self.linear = nn.Sequential(
+            nn.Dropout(p=dropout_p),
+            nn.Linear(hidden_size, self.vocab_size))
 
         self.reset_parameters()
 
@@ -80,7 +81,7 @@ class S2VTModel(nn.Module):
         # output1 - (N x B x H)
         word_padding = torch.zeros((num_frames, batch_size, self.embed_size)).to(device)
         # N x B x E
-        output1 = self.drop(torch.cat((output1, word_padding), dim=2))
+        output1 = torch.cat((output1, word_padding), dim=2)
         # N x B x (H + E)
         _, state2 = self.rnn2(output1)
 
@@ -96,7 +97,7 @@ class S2VTModel(nn.Module):
             # right shifted sentence - (B x L)
             s = self.embedding(s).transpose(0, 1)
             # L x B x E
-            output1 = self.drop(torch.cat((output1, s), dim=2))
+            output1 = torch.cat((output1, s), dim=2)
             # L x B x (H + E)
             output2, _ = self.rnn2(output1, state2)
             # L x B x H
@@ -120,7 +121,7 @@ class S2VTModel(nn.Module):
                 # 1 x B x H
                 curr_words = self.embedding(curr_words)
                 # 1 x B x E
-                output1 = self.drop(torch.cat((output1, curr_words), dim=2))
+                output1 = torch.cat((output1, curr_words), dim=2)
                 # 1 x B x (H + E)
                 output2, state2 = self.rnn2(output1, state2)
                 # 1 x B x H

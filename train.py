@@ -55,7 +55,8 @@ def calc_masked_loss(logits, target, s_len, criterion):
     loss = criterion(logits.view(batch_size * max_len, -1), target.view(-1))
     loss = loss.view(batch_size, max_len)
     mask = calc_sentence_mask(batch_size, max_len, s_len)
-    loss = torch.mul(loss, mask).sum() / torch.sum(mask)
+    loss = (torch.mul(loss, mask).sum(dim=1) / mask.sum(dim=1)).mean()
+    # loss = torch.mul(loss, mask).sum() / torch.sum(mask)
 
     return loss
 
@@ -92,15 +93,16 @@ def calc_meteor_score(hyps, refs, nlg_eval):
 
     return score
 
-def print_sample_sents(hyps, refs, vid_keys):
+def print_sample_sents(tups):
     """
     Args:
-        hyps: list containing output prediction sentences of the classifier
-        refs: list containing the reference sentences
-        vid_keys: video keys corresponding to the sentences
+        tuples containing
+            hyps: output prediction sentences of the classifier
+            refs: reference sentences
+            vid_keys: video keys corresponding to the sentences
     """
     print('********************************* Samples *********************************')
-    for ref, hyp, vk in zip(refs, hyps, vid_keys):
+    for hyp, ref, vk in tups:
         print('Video ID   : {}'.format(vk))
         print('Hypothesis : {}'.format(hyp))
         print('Reference  : {}'.format(ref))
@@ -163,9 +165,9 @@ def train(opts):
         raise NotImplementedError('Unknown dataset')
 
     train_loader = DataLoader(VDDataset(opts.data_dir, 'train', glove_loader, opts.num_frames, opts.max_len), \
-        batch_size=opts.bsize, shuffle=True, num_workers=opts.nworkers)
+        batch_size=opts.bsize, shuffle=True, num_workers=opts.nworkers, collate_fn=collate_fn)
     valid_loader = DataLoader(VDDataset(opts.data_dir, 'val', glove_loader, opts.num_frames, opts.max_len), \
-        batch_size=opts.bsize, shuffle=False, num_workers=opts.nworkers)
+        batch_size=opts.bsize, shuffle=False, num_workers=opts.nworkers, collate_fn=collate_fn)
 
     if opts.arch == 's2vt':
         model = S2VTModel(glove_loader, opts.dropout_p, opts.hidden_size, opts.vid_feat_size, opts.max_len)
@@ -231,7 +233,7 @@ def train(opts):
         print('')
         print('********************************** TRAIN **********************************')
         train_sample_sent = sampler.get()
-        print_sample_sents(*zip(*train_sample_sent))
+        print_sample_sents(train_sample_sent)
         print('***************************************************************************')
         print('')
         print('*********************************** VAL ***********************************')
@@ -239,7 +241,7 @@ def train(opts):
         logger.log_valid(time_taken, val_acc, val_loss)
         logger.writer.add_scalar('val/METEOR', val_meteor_score, logger.n_iter)
         print('Validation METEOR score: {:.5f}'.format(val_meteor_score))
-        print_sample_sents(*zip(*sample_sent))
+        print_sample_sents(sample_sent)
         print ('')
 
         # Save the model to disk
