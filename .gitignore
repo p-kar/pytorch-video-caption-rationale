@@ -124,11 +124,17 @@ dmypy.json
 
 # Mac related ignores
 data/glove
-data/msvd
-data/msr-vtt
-data/*.json
-data/*.txt
-data/*.csv
+data/msvd/feats
+data/msvd/clips
+data/msvd/frames
+data/msvd/glove
+data/msrvtt/feats
+data/msrvtt/clips
+data/msrvtt/frames
+data/msrvtt/glove
+data/**/*.json
+data/**/*.txt
+data/**/*.csv
 
 logs/
 runs/

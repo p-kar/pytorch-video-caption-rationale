@@ -46,7 +46,7 @@ def extract_video_feats(opts):
     video_clips_dir = os.path.join(corpus_base_dir, 'clips/')
     if opts.corpus == 'msvd':
         file_ext = '.avi'
-    elif opts.corpus == 'msr-vtt':
+    elif opts.corpus == 'msrvtt':
         file_ext = '.mp4'
     else:
         raise NotImplementedError('unknown corpus')

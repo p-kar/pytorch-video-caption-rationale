@@ -18,10 +18,10 @@ from torchvision import transforms
 from torch.utils.data import DataLoader
 
 from utils import *
+from dataset import *
 from nlgeval import NLGEval
 from model.S2VTModel import S2VTModel
 from logger import TensorboardXLogger
-from dataset import MSVideoDescriptionDataset
 
 use_cuda = torch.cuda.is_available()
 device = torch.device("cuda" if use_cuda else "cpu")
@@ -154,10 +154,17 @@ def evaluate(opts, model, loader, criterion, glove_loader, meteor_eval_func):
 
 def train(opts):
 
-    glove_loader = GloveLoader(os.path.join(opts.data_dir, 'glove/trunc', opts.glove_emb_file))
-    train_loader = DataLoader(MSVideoDescriptionDataset(opts.data_dir, 'train', glove_loader, opts.num_frames, opts.max_len), \
+    glove_loader = GloveLoader(os.path.join(opts.data_dir, opts.corpus, 'glove/', opts.glove_emb_file))
+    if opts.corpus == 'msvd':
+        VDDataset = MSVideoDescriptionDataset
+    elif opts.corpus == 'msrvtt':
+        VDDataset = MSRVideoToTextDataset
+    else:
+        raise NotImplementedError('Unknown dataset')
+
+    train_loader = DataLoader(VDDataset(opts.data_dir, 'train', glove_loader, opts.num_frames, opts.max_len), \
         batch_size=opts.bsize, shuffle=True, num_workers=opts.nworkers)
-    valid_loader = DataLoader(MSVideoDescriptionDataset(opts.data_dir, 'val', glove_loader, opts.num_frames, opts.max_len), \
+    valid_loader = DataLoader(VDDataset(opts.data_dir, 'val', glove_loader, opts.num_frames, opts.max_len), \
         batch_size=opts.bsize, shuffle=False, num_workers=opts.nworkers)
 
     if opts.arch == 's2vt':

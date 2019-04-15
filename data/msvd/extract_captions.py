@@ -7,8 +7,9 @@ import random
 
 def extract_captions(opts):
 
-    caption_file = os.path.join(opts.data_dir, 'multilingual_corpus.csv')
-    video_clips_dir = os.path.join(opts.data_dir, 'clips/')
+    corpus_dir = os.path.join(opts.data_dir, opts.corpus)
+    caption_file = os.path.join(corpus_dir, 'multilingual_corpus.csv')
+    video_clips_dir = os.path.join(corpus_dir, 'clips/')
     video_clips = set([f for f in os.listdir(video_clips_dir) if f.endswith('.avi')])
     language = 'English'
 
@@ -39,8 +40,8 @@ def extract_captions(opts):
     random.shuffle(video_caption_list)
     train_perc = 0.85
     train_idx = int(len(video_caption_list) * train_perc)
-    with open(os.path.join(opts.data_dir, 'train_captions.json'), 'w') as fp:
+    with open(os.path.join(corpus_dir, 'train_captions.json'), 'w') as fp:
         json.dump(video_caption_list[:train_idx], fp)
-    with open(os.path.join(opts.data_dir, 'val_captions.json'), 'w') as fp:
+    with open(os.path.join(corpus_dir, 'val_captions.json'), 'w') as fp:
         json.dump(video_caption_list[train_idx:], fp)
 
