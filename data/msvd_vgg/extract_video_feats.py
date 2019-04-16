@@ -31,8 +31,8 @@ def extract_video_feats(opts):
         for row in rows:
             assert len(row) == 4097
             match_obj = re.match(vid_name_regex, row[0])
-            video_base_name = match_obj[1]
-            video_frame_num = int(match_obj[2])
+            video_base_name = match_obj.group(1)
+            video_frame_num = int(match_obj.group(2))
             feat = np.array([float(x) for x in row[1:]])
 
             if video_base_name in video_feats:

@@ -175,9 +175,9 @@ def train(opts):
     else:
         raise NotImplementedError('Unknown dataset')
 
-    train_loader = DataLoader(VDDataset(opts.data_dir, 'train', glove_loader, opts.num_frames, opts.max_len), \
+    train_loader = DataLoader(VDDataset(opts.data_dir, opts.corpus, 'train', glove_loader, opts.num_frames, opts.max_len), \
         batch_size=opts.bsize, shuffle=True, num_workers=opts.nworkers, collate_fn=collate_fn)
-    valid_loader = DataLoader(VDDataset(opts.data_dir, 'val', glove_loader, opts.num_frames, opts.max_len), \
+    valid_loader = DataLoader(VDDataset(opts.data_dir, opts.corpus, 'val', glove_loader, opts.num_frames, opts.max_len), \
         batch_size=opts.bsize, shuffle=False, num_workers=opts.nworkers, collate_fn=collate_fn)
 
     if opts.arch == 's2vt':

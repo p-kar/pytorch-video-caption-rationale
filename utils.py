@@ -1,4 +1,5 @@
 import pdb
+import time
 import torch
 import random
 import numpy as np
@@ -122,7 +123,7 @@ class StreamSampler:
 
     def add(self, obj):
         self.samples.append((random.random(), obj))
-        sorted(self.samples, key=lambda x: x[0])
+        self.samples = sorted(self.samples, key=lambda x: x[0])
         if len(self.samples) > self.num_samples:
             self.samples = self.samples[:-1]
 

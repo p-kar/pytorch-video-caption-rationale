@@ -42,11 +42,12 @@ def collate_fn(batch):
 class MSVideoDescriptionDataset(Dataset):
     """Microsoft Video Description Corpus"""
 
-    def __init__(self, root, split, glove_loader, num_frames, maxlen):
+    def __init__(self, root, corpus, split, glove_loader, num_frames, maxlen):
+        assert(corpus in ['msvd', 'msvd_vgg'])
         self.word_to_index = glove_loader.word_to_index
         self.split = split
         self.glove_vec_size = glove_loader.embed_size
-        self.corpus_dir = os.path.join(root, 'msvd')
+        self.corpus_dir = os.path.join(root, corpus)
         self.caption_file = os.path.join(self.corpus_dir, '{}_captions.json'.format(split))
         self.captions = read_caption_file(self.caption_file)
         self.maxlen = maxlen
@@ -86,10 +87,11 @@ class MSRVideoToTextDataset(Dataset):
     """Microsoft Research - Video To Text Dataset"""
 
     def __init__(self, root, split, glove_loader, num_frames, maxlen):
+        assert(corpus == 'msrvtt')
         self.word_to_index = glove_loader.word_to_index
         self.split = split
         self.glove_vec_size = glove_loader.embed_size
-        self.corpus_dir = os.path.join(root, 'msrvtt')
+        self.corpus_dir = os.path.join(root, corpus)
         self.caption_file = os.path.join(self.corpus_dir, '{}_captions.json'.format(split))
         self.captions = read_caption_file(self.caption_file)
         self.maxlen = maxlen
