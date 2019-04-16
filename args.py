@@ -15,7 +15,7 @@ def get_args():
 
     # DataLoader
     parser.add_argument('--data_dir', default='./data', type=str, help='root directory of the dataset')
-    parser.add_argument('--corpus', default='msrvtt', type=str, help='video captioning corpus to use')
+    parser.add_argument('--corpus', default='msvd_vgg', type=str, help='video captioning corpus to use')
     parser.add_argument('--nworkers', default=4, type=int, help='number of data loading workers')
     parser.add_argument('--bsize', default=32, type=int, help='mini-batch size')
     parser.add_argument('--shuffle', default='True', type=str2bool, help='shuffle the data?')
@@ -24,15 +24,15 @@ def get_args():
     # Image Model Parameters
     parser.add_argument('--img_size', default=224, type=int, help='image size for the CNN model')
     parser.add_argument('--vision_arch', default='resnet34', type=str, help='base ImageNet model for video features')
-    parser.add_argument('--num_frames', default=60, type=int, help='number of frames to extract from the video')
-    parser.add_argument('--vid_feat_size', default=512, type=int, help='size of the video features')
+    parser.add_argument('--num_frames', default=30, type=int, help='number of frames to extract from the video')
+    parser.add_argument('--vid_feat_size', default=4096, type=int, help='size of the video features')
 
     # Model Parameters
     parser.add_argument('--arch', default='s2vt', type=str, help='video captioning model architecture')
     parser.add_argument('--max_len', default=20, type=int, help='max length of the sentence')
     parser.add_argument('--dropout_p', default=0.2, type=float, help='dropout probability')
     parser.add_argument('--hidden_size', default=512, type=int, help='hidden layer size')
-    parser.add_argument('--schedule_sample', default=True, type=str2bool, help='perform schedule sampling while training')
+    parser.add_argument('--schedule_sample', default=False, type=str2bool, help='perform schedule sampling while training')
 
     # Optimization Parameters
     parser.add_argument('--optim', default='adam', type=str, help='optimizer type')
@@ -54,7 +54,7 @@ def get_args():
     args = parser.parse_args()
 
     print('Running on {} corpus'.format(args.corpus.upper()))
-    if args.corpus not in ['msvd', 'msrvtt']:
+    if args.corpus not in ['msvd', 'msrvtt', 'msvd_vgg']:
         raise NotImplementedError('Unknown corpus')
 
     return args

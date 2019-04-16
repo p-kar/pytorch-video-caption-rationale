@@ -168,7 +168,7 @@ def evaluate(opts, model, loader, criterion, glove_loader, meteor_eval_func):
 def train(opts):
 
     glove_loader = GloveLoader(os.path.join(opts.data_dir, opts.corpus, 'glove/', opts.glove_emb_file))
-    if opts.corpus == 'msvd':
+    if opts.corpus in ['msvd', 'msvd_vgg']:
         VDDataset = MSVideoDescriptionDataset
     elif opts.corpus == 'msrvtt':
         VDDataset = MSRVideoToTextDataset

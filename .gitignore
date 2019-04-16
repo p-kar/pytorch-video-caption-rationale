@@ -128,6 +128,10 @@ data/msvd/feats
 data/msvd/clips
 data/msvd/frames
 data/msvd/glove
+data/msvd_vgg/feats
+data/msvd_vgg/clips
+data/msvd_vgg/frames
+data/msvd_vgg/glove
 data/msrvtt/feats
 data/msrvtt/clips
 data/msrvtt/frames
@@ -135,6 +139,7 @@ data/msrvtt/glove
 data/**/*.json
 data/**/*.txt
 data/**/*.csv
+data/**/*.npy
 *.zip
 
 logs/
