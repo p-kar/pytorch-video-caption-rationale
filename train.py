@@ -21,6 +21,7 @@ from utils import *
 from dataset import *
 from nlgeval import NLGEval
 from model.S2VTModel import S2VTModel
+from model.S2VTAttModel import S2VTAttModel
 from logger import TensorboardXLogger
 
 use_cuda = torch.cuda.is_available()
@@ -181,6 +182,8 @@ def train(opts):
         batch_size=opts.bsize, shuffle=False, num_workers=opts.nworkers, collate_fn=collate_fn)
 
     if opts.arch == 's2vt':
+        model = S2VTModel(glove_loader, opts.dropout_p, opts.hidden_size, opts.vid_feat_size, opts.max_len)
+    elif opts.arch == 's2vt-att':
         model = S2VTModel(glove_loader, opts.dropout_p, opts.hidden_size, opts.vid_feat_size, opts.max_len)
     else:
         raise NotImplementedError('Unknown model architecture')

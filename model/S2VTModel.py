@@ -109,7 +109,7 @@ class S2VTModel(nn.Module):
                 # 1 x B x (H + E)
                 output2, state2 = self.rnn2(output1, state2)
                 # 1 x B x H
-                outs = self.linear(output2.squeeze())
+                outs = self.linear(output2.squeeze(0))
                 _, curr_words = torch.max(outs, dim=1)
                 curr_words = curr_words.unsqueeze(0)
                 # 1 x B
@@ -144,7 +144,7 @@ class S2VTModel(nn.Module):
                 # 1 x B x (H + E)
                 output2, state2 = self.rnn2(output1, state2)
                 # 1 x B x H
-                outs = self.linear(output2.squeeze())
+                outs = self.linear(output2.squeeze(0))
                 _, curr_words = torch.max(outs, dim=1)
                 curr_words = curr_words.unsqueeze(0)
                 # 1 x B
