@@ -4,6 +4,7 @@ import pdb
 from utils import *
 from args import get_args
 from train import train
+from train_rationale import train_rationale
 from data.extract_glove import extract_glove
 from data.extract_video_feats import extract_video_feats
 from data.msvd_vgg.extract_video_feats import extract_video_feats as msvd_vgg_extract_video_feats
@@ -34,6 +35,8 @@ if __name__ == '__main__':
         extract_glove(opts)
     elif opts.mode == 'train':
         train(opts)
+    elif opts.mode == 'train_rationale':
+        train_rationale(opts)
     else:
         raise NotImplementedError('unrecognized mode')
 

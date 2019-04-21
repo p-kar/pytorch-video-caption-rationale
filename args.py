@@ -33,6 +33,7 @@ def get_args():
     parser.add_argument('--dropout_p', default=0.2, type=float, help='dropout probability')
     parser.add_argument('--hidden_size', default=512, type=int, help='hidden layer size')
     parser.add_argument('--schedule_sample', default=False, type=str2bool, help='perform schedule sampling while training')
+    parser.add_argument('--tau', default=0.5, type=float, help='Temperature parameter for Gumbel-Softmax')
 
     # Optimization Parameters
     parser.add_argument('--optim', default='adam', type=str, help='optimizer type')
@@ -42,6 +43,8 @@ def get_args():
     parser.add_argument('--epochs', default=1000, type=int, help='number of total epochs to run')
     parser.add_argument('--max_norm', default=1, type=float, help='max grad norm')
     parser.add_argument('--start_epoch', default=0, type=int, help='manual epoch number (useful on restarts)')
+    parser.add_argument('--lambda_brev', default=1.0, type=float, help='Scaling factor for brevity loss')
+    parser.add_argument('--lambda_cont', default=1.0, type=float, help='Scaling factor for continuity loss')
 
     # Other
     parser.add_argument('--save_path', default='./trained_models', type=str, help='directory where models are saved')
