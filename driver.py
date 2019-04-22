@@ -11,6 +11,7 @@ from data.msvd_vgg.extract_video_feats import extract_video_feats as msvd_vgg_ex
 from data.msvd.extract_captions import extract_captions as msvd_extract_captions
 from data.msrvtt.extract_captions import extract_captions as msrvtt_extract_captions
 from data.msvd_vgg.extract_captions import extract_captions as msvd_vgg_extract_captions
+from data.extract_bbox_feats import extract_bbox_feats
 
 if __name__ == '__main__':
 
@@ -31,6 +32,8 @@ if __name__ == '__main__':
             msvd_vgg_extract_video_feats(opts)
         else:
             extract_video_feats(opts)
+    elif opts.mode == 'extract_bbox_feats':
+        extract_bbox_feats(opts)
     elif opts.mode == 'extract_glove':
         extract_glove(opts)
     elif opts.mode == 'train':
