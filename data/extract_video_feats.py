@@ -8,7 +8,9 @@ import random
 import shutil
 import subprocess
 
+import cv2
 import torch
+import skimage
 import numpy as np
 import torch.nn as nn
 from tqdm import tqdm
@@ -18,26 +20,64 @@ from torchvision import models, transforms
 
 use_cuda = torch.cuda.is_available()
 
-def load_frame(fname, img_size):
+def load_frame(frame, img_size):
+    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     transform = transforms.Compose([
         transforms.Resize(img_size),
         transforms.CenterCrop(img_size),
         transforms.ToTensor(),
-        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])])
-    img = Image.open(fname)
-    return transform(img)
+        normalize])
+    return transform(frame)
 
-def extract_frames(video_file, dst):
-    with open(os.devnull, "w") as ffmpeg_log:
-        os.makedirs(dst)
-        video_to_frames_command = ["ffmpeg",
-                                   # (optional) overwrite output file if it exists
-                                   '-y',
-                                   '-i', video_file,  # input file
-                                   # '-vf', "scale=400:300",  # input file
-                                   '-qscale:v', "2",  # quality for JPEG
-                                   '{0}/%06d.jpg'.format(dst)]
-        subprocess.call(video_to_frames_command, stdout=ffmpeg_log, stderr=ffmpeg_log)
+# def extract_frames(video_file, dst):
+#     with open(os.devnull, "w") as ffmpeg_log:
+#         os.makedirs(dst)
+#         video_to_frames_command = ["ffmpeg",
+#                                    # (optional) overwrite output file if it exists
+#                                    '-y',
+#                                    '-i', video_file,  # input file
+#                                    # '-vf', "scale=400:300",  # input file
+#                                    '-qscale:v', "2",  # quality for JPEG
+#                                    '{0}/%06d.jpg'.format(dst)]
+#         subprocess.call(video_to_frames_command, stdout=ffmpeg_log, stderr=ffmpeg_log)
+
+def preprocess_frame(image, target_height, target_width):
+
+    if len(image.shape) == 2:
+        image = np.tile(image[:,:,None], 3)
+    elif len(image.shape) == 4:
+        image = image[:,:,:,0]
+
+    image = skimage.img_as_float(image).astype(np.float32)
+    height, width, rgb = image.shape
+    if width == height:
+        resized_image = cv2.resize(image, (target_height,target_width))
+
+    elif height < width:
+        resized_image = cv2.resize(image, (int(width * float(target_height)/height), target_width))
+        cropping_length = int((resized_image.shape[1] - target_height) / 2)
+        resized_image = resized_image[:,cropping_length:resized_image.shape[1] - cropping_length]
+
+    else:
+        resized_image = cv2.resize(image, (target_height, int(height * float(target_width) / width)))
+        cropping_length = int((resized_image.shape[0] - target_width) / 2)
+        resized_image = resized_image[cropping_length:resized_image.shape[0] - cropping_length,:]
+
+    return cv2.resize(resized_image, (target_height, target_width))
+
+def extract_frames(video_file, img_size):
+    cap = cv2.VideoCapture(video_file)
+    frame_list = []
+    while True:
+        ret, frame = cap.read()
+        if ret is False:
+            break
+        frame = preprocess_frame(frame, img_size, img_size)
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB) * 255
+        frame = Image.fromarray(np.uint8(frame))
+        frame_list.append(frame)
+
+    return frame_list
 
 
 def extract_video_feats(opts):
@@ -76,10 +116,8 @@ def extract_video_feats(opts):
         if os.path.exists(frames_dir):
             shutil.rmtree(frames_dir)
 
-        extract_frames(video_path, frames_dir)
+        frame_list = extract_frames(video_path, opts.img_size)
 
-        frame_list = sorted(glob.glob(os.path.join(frames_dir, '*.jpg')))
-        pdb.set_trace()
         if len(frame_list) > opts.num_frames:
             frame_indices = np.linspace(0, len(frame_list), num=opts.num_frames, endpoint=False).astype(int)
         else:
