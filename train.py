@@ -90,7 +90,7 @@ def train(opts):
     if opts.arch == 's2vt':
         model = S2VTModel(glove_loader, opts.dropout_p, opts.hidden_size, opts.vid_feat_size, opts.max_len)
     elif opts.arch == 's2vt-att':
-        model = S2VTModel(glove_loader, opts.dropout_p, opts.hidden_size, opts.vid_feat_size, opts.max_len)
+        model = S2VTAttModel(glove_loader, opts.dropout_p, opts.hidden_size, opts.vid_feat_size, opts.max_len)
     else:
         raise NotImplementedError('Unknown model architecture')
 

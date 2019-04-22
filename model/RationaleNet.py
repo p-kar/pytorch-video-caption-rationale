@@ -40,10 +40,9 @@ class Generator(nn.Module):
         batch_size = vid_feats.shape[0]
         num_frames = vid_feats.shape[1]
 
-        vid_feats = torch.transpose(vid_feats, 0, 1)
-        out, _ = self.rnn(vid_feats)
+        out, _ = self.rnn(torch.transpose(vid_feats, 0, 1))
         # N x B x (2 * H)
-        out = self.drop(out).transpose(0, 1)
+        out = self.drop(out).transpose(0, 1).contiguous()
         # B x N x (2 * H)
         logits = self.linear(out.view(batch_size * num_frames, -1))
         # (B * N) x 2
@@ -57,7 +56,7 @@ class Generator(nn.Module):
 
 class RationaleNet(nn.Module):
 
-    def __init__(self, glove_loader, dropout_p, hidden_size, vid_feat_size, max_len, tau, arch):
+    def __init__(self, glove_loader, dropout_p, hidden_size, vid_feat_size, max_len, tau, arch, pretrained_base=None):
         """
         Args:
             glove_loader: GLoVe embedding loader
@@ -67,6 +66,7 @@ class RationaleNet(nn.Module):
             max_len: Max length to rollout
             tau: non-negative scalar temperature
             arch: video captioning network ['s2vt' | 's2vt-att']
+            pretrained_base: pretrained video captioning network
         """
         super(RationaleNet, self).__init__()
 
@@ -76,6 +76,10 @@ class RationaleNet(nn.Module):
             self.caption_net = S2VTAttModel(glove_loader, dropout_p, hidden_size, vid_feat_size, max_len)
         else:
             raise NotImplementedError('unknown video captioning arch')
+        
+        if pretrained_base is not None:
+            pretrained_dict = torch.load(pretrained_base, map_location='cpu')['state_dict']
+            self.caption_net.load_state_dict(pretrained_dict)
 
         self.gen = Generator(dropout_p, hidden_size, vid_feat_size, tau)
 
@@ -97,7 +101,7 @@ class RationaleNet(nn.Module):
             probs: Selection probability of the video frames (B x N x 2)
         """
         sel_vid_feats, probs = self.gen(vid_feats)
-        logits = self.caption_net(vid_feats, s)
+        logits = self.caption_net(sel_vid_feats, s)
 
         return logits, probs
 

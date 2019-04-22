@@ -33,7 +33,8 @@ def get_args():
     parser.add_argument('--dropout_p', default=0.2, type=float, help='dropout probability')
     parser.add_argument('--hidden_size', default=512, type=int, help='hidden layer size')
     parser.add_argument('--schedule_sample', default=False, type=str2bool, help='perform schedule sampling while training')
-    parser.add_argument('--tau', default=0.5, type=float, help='Temperature parameter for Gumbel-Softmax')
+    parser.add_argument('--tau', default=1.0, type=float, help='Temperature parameter for Gumbel-Softmax')
+    parser.add_argument('--pretrained_base', default=None, type=str, help='Pretrained video captioning model')
 
     # Optimization Parameters
     parser.add_argument('--optim', default='adam', type=str, help='optimizer type')

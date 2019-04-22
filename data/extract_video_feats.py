@@ -34,7 +34,7 @@ def extract_frames(video_file, dst):
                                    # (optional) overwrite output file if it exists
                                    '-y',
                                    '-i', video_file,  # input file
-                                   '-vf', "scale=400:300",  # input file
+                                   # '-vf', "scale=400:300",  # input file
                                    '-qscale:v', "2",  # quality for JPEG
                                    '{0}/%06d.jpg'.format(dst)]
         subprocess.call(video_to_frames_command, stdout=ffmpeg_log, stderr=ffmpeg_log)
@@ -68,6 +68,7 @@ def extract_video_feats(opts):
 
     device = torch.device("cuda" if use_cuda else "cpu")
     model = model.to(device)
+    model.eval()
 
     for video in tqdm(video_clips):
         video_path = os.path.join(video_clips_dir, video)
@@ -78,6 +79,7 @@ def extract_video_feats(opts):
         extract_frames(video_path, frames_dir)
 
         frame_list = sorted(glob.glob(os.path.join(frames_dir, '*.jpg')))
+        pdb.set_trace()
         if len(frame_list) > opts.num_frames:
             frame_indices = np.linspace(0, len(frame_list), num=opts.num_frames, endpoint=False).astype(int)
         else:

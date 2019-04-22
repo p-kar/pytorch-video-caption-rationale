@@ -94,9 +94,9 @@ class Decoder(nn.Module):
         self.sos_id = glove_loader.get_id('<sos>')
 
         self.embedding = nn.Embedding(self.vocab_size, self.embed_size)
-        self.embed_size.load_state_dict({'weight': torch.Tensor(word_vectors)})
+        self.embedding.load_state_dict({'weight': torch.Tensor(word_vectors)})
 
-        self.rnn = nn.LSTM(hidden_size + self.embed_size, hidden_size, \
+        self.rnn = nn.GRU(hidden_size + self.embed_size, hidden_size, \
             num_layers=1)
 
         self.attention = Attention(hidden_size=hidden_size)
@@ -143,8 +143,9 @@ class Decoder(nn.Module):
             assert s is not None
         device = torch.device("cuda" if next(self.parameters()).is_cuda else "cpu")
 
-        batch_size = self.encoder_outs.shape[0]
-        num_frames = self.encoder_outs.shape[1]
+        batch_size = encoder_outs.shape[0]
+        num_frames = encoder_outs.shape[1]
+        encoder_outs = encoder_outs.contiguous()
 
         sos_tags = torch.ones((batch_size, 1), dtype=torch.long) * self.sos_id
         sos_tags = sos_tags.to(device)

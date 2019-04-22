@@ -2,7 +2,7 @@ import os
 import pdb
 import subprocess as sp
 
-OUTPUT_ROOT='/scratch/cluster/pkar/pytorch-video-caption-rationale/runs/train_s2vt_msvd_vgg_schedule_sample'
+OUTPUT_ROOT='/scratch/cluster/pkar/pytorch-video-caption-rationale/runs/train_s2vt_att_msvd_vgg'
 SCRIPT_ROOT='/scratch/cluster/pkar/pytorch-video-caption-rationale/scripts'
 
 mapping_dict = {
@@ -24,11 +24,11 @@ mapping_dict = {
     '__VISION_ARCH__': 'resnet34',
     '__NUM_FRAMES__': '30',
     '__VID_FEAT_SIZE__': '4096',
-    '__ARCH__': 's2vt',
+    '__ARCH__': 's2vt-att',
     '__MAX_LEN__': '20',
-    '__DROPOUT_P__': '0.2',
+    '__DROPOUT_P__': '0.4',
     '__HIDDEN_SIZE__': '512',
-    '__SCHEDULE_SAMPLE__': 'true',
+    '__SCHEDULE_SAMPLE__': 'false',
     '__OPTIM__': 'adam',
     '__LR__': ['1e-4', '1e-3'],
     '__WD__': '5e-4',
