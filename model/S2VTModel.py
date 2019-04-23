@@ -39,9 +39,9 @@ class S2VTModel(nn.Module):
             nn.Dropout(p=dropout_p))
         self.embedding[0].load_state_dict({'weight': torch.Tensor(word_vectors)})
 
-        self.rnn1 = nn.LSTM(input_size=vid_feat_size, hidden_size=hidden_size, \
+        self.rnn1 = nn.GRU(input_size=vid_feat_size, hidden_size=hidden_size, \
             num_layers=1)
-        self.rnn2 = nn.LSTM(input_size=hidden_size + self.embed_size, hidden_size=hidden_size, \
+        self.rnn2 = nn.GRU(input_size=hidden_size + self.embed_size, hidden_size=hidden_size, \
             num_layers=1)
 
         self.linear = nn.Sequential(
@@ -54,34 +54,52 @@ class S2VTModel(nn.Module):
         """Initialize network weights using Xavier init (with bias 0.01)"""
         self.apply(ixvr)
 
-    def forward(self, vid_feats, s=None):
+    def encode_step(self, vid_feat, rnn_state=None):
         """
-        B - batch size
-        H - hidden size
-        N - number of frames
-        V - video feature size
-        L - length of sentence
-        E - word embed size
+        Args:
+            vid_feat: Video features (B x V)
+            rnn_state: None if the beginning otherwise the hidden state
+                of rnn1
+        Output:
+            output: Encoder output (1 x B x H)
+            rnn_state: Next RNN state
+        """
+        if rnn_state is not None:
+            output, rnn_state = self.rnn1(vid_feat.unsqueeze(0), rnn_state)
+        else:
+            output, rnn_state = self.rnn1(vid_feat.unsqueeze(0))
+
+        return output, rnn_state
+
+    def encode(self, vid_feats):
+        """
         Args:
             vid_feats: Video features (B x N x V)
+        Output:
+            output: Encoder output (N x B x H)
+            rnn_state: Next RNN state
+        """
+        vid_feats = torch.transpose(vid_feats, 0, 1)
+        # N x B x V
+        output, rnn_state = self.rnn1(vid_feats)
+
+        return output, rnn_state
+
+    def decode(self, output1, state1, s):
+        """
+        Args:
+            output1: rnn1 output (N x B x H)
+            state1: rnn1 state (1 x B x H)
             s: Tokenized sentence (B x L)
-                sentence doesn't start with <sos> but ends 
-                with <eos> (with optional <pad>)
         Output:
             logits: Logits for next word prediction (B x L x vocab_size)
         """
-        if self.training:
-            assert s is not None
-        device = torch.device("cuda" if next(self.parameters()).is_cuda else "cpu")
+        device = output1.device
 
-        batch_size = vid_feats.shape[0]
-        num_frames = vid_feats.shape[1]
+        num_frames = output1.shape[0]
+        batch_size = output1.shape[1]
         max_len = self.max_len
 
-        vid_feats = torch.transpose(vid_feats, 0, 1)
-        # N x B x V
-        output1, state1 = self.rnn1(vid_feats)
-        # output1 - (N x B x H)
         word_padding = torch.zeros((num_frames, batch_size, self.embed_size)).to(device)
         # N x B x E
         output1 = torch.cat((output1, word_padding), dim=2)
@@ -157,4 +175,29 @@ class S2VTModel(nn.Module):
             # B x L x vocab_size
             
             return logits
+
+    def forward(self, vid_feats, s=None):
+        """
+        B - batch size
+        H - hidden size
+        N - number of frames
+        V - video feature size
+        L - length of sentence
+        E - word embed size
+        Args:
+            vid_feats: Video features (B x N x V)
+            s: Tokenized sentence (B x L)
+                sentence doesn't start with <sos> but ends 
+                with <eos> (with optional <pad>)
+        Output:
+            logits: Logits for next word prediction (B x L x vocab_size)
+        """
+        if self.training:
+            assert s is not None
+
+        output1, state1 = self.encode(vid_feats)
+        # output1 - (N x B x H)
+        logits = self.decode(output1, state1, s)
+
+        return logits
 
