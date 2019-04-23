@@ -229,7 +229,7 @@ class Transformer(nn.Module):
         #self.out = nn.Linear(hidden_size, glove_loader)
     def forward(self, vid_features,s=None):# __trg__, __src_mask__, __trg_mask__):
         print ("vid_features shape:", vid_features.shape)
-        e_outputs = self.encoder(vid_features)#, __src_mask__)
+        e_outputs = self.encoder(vid_features, __src_mask__)
         logits = self.decoder(e_outputs,s)#__src_mask__, __trg_mask__)
         #logits = self.out(d_output)
         return logits
