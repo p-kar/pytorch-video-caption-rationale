@@ -102,7 +102,8 @@ def ixvr(input_layer, bias_val=0.01):
         "<class 'torch.nn.modules.batchnorm.BatchNorm1d'>", \
         "<class 'torch.nn.modules.sparse.Embedding'>"]
     # If the layer is an LSTM
-    if str(type(input_layer)) == "<class 'torch.nn.modules.rnn.LSTM'>":
+    if str(type(input_layer)) in ["<class 'torch.nn.modules.rnn.LSTM'>", \
+        "<class 'torch.nn.modules.rnn.GRU'>"]:
         for i in range(input_layer.num_layers):
             nn.init.xavier_normal_(getattr(input_layer, 'weight_ih_l%d'%(i)))
             nn.init.xavier_normal_(getattr(input_layer, 'weight_hh_l%d'%(i)))

@@ -42,7 +42,7 @@ def collate_fn(batch):
 class MSVideoDescriptionDataset(Dataset):
     """Microsoft Video Description Corpus"""
 
-    def __init__(self, root, corpus, split, glove_loader, num_frames, maxlen):
+    def __init__(self, root, corpus, split, glove_loader, num_frames, maxlen, feat_type='cnn'):
         assert(corpus in ['msvd', 'msvd_vgg'])
         self.word_to_index = glove_loader.word_to_index
         self.split = split
@@ -52,7 +52,12 @@ class MSVideoDescriptionDataset(Dataset):
         self.captions = read_caption_file(self.caption_file)
         self.maxlen = maxlen
         self.num_frames = num_frames
-        self.vid_feat_dir = os.path.join(self.corpus_dir, 'feats/')
+        if feat_type == 'cnn':
+            self.vid_feat_dir = os.path.join(self.corpus_dir, 'feats/')
+        elif feat_type == 'yolo':
+            self.vid_feat_dir = os.path.join(self.corpus_dir, 'bbox_feats/')
+        else:
+            raise NotImplementedError('unknown feat_type')
 
     def __len__(self):
         return len(self.captions)
@@ -69,7 +74,7 @@ class MSVideoDescriptionDataset(Dataset):
         # Extract ImageNet features for video frames
         video_key = self.captions[idx]['video_key']
         vid_feats = np.load(os.path.join(self.vid_feat_dir, video_key + '.npy'))
-        vid_feats_padding = np.zeros((max(0, self.num_frames - vid_feats.shape[0]), vid_feats.shape[1]))
+        vid_feats_padding = np.zeros((max(0, self.num_frames - vid_feats.shape[0]), *vid_feats.shape[1:]))
         vid_feats = np.concatenate((vid_feats, vid_feats_padding), axis=0)[:self.num_frames, :]
         vid_feats = torch.FloatTensor(vid_feats)
         # Get a random caption for this video
@@ -86,7 +91,7 @@ class MSVideoDescriptionDataset(Dataset):
 class MSRVideoToTextDataset(Dataset):
     """Microsoft Research - Video To Text Dataset"""
 
-    def __init__(self, root, split, glove_loader, num_frames, maxlen):
+    def __init__(self, root, split, glove_loader, num_frames, maxlen, feat_type='cnn'):
         assert(corpus == 'msrvtt')
         self.word_to_index = glove_loader.word_to_index
         self.split = split
@@ -96,7 +101,12 @@ class MSRVideoToTextDataset(Dataset):
         self.captions = read_caption_file(self.caption_file)
         self.maxlen = maxlen
         self.num_frames = num_frames
-        self.vid_feat_dir = os.path.join(self.corpus_dir, 'feats/')
+        if feat_type == 'cnn':
+            self.vid_feat_dir = os.path.join(self.corpus_dir, 'feats/')
+        elif feat_type == 'yolo':
+            self.vid_feat_dir = os.path.join(self.corpus_dir, 'bbox_feats/')
+        else:
+            raise NotImplementedError('unknown feat_type')
 
     def __len__(self):
         return len(self.captions)
