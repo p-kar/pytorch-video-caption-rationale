@@ -35,7 +35,7 @@ class Attention(nn.Module):
         """
         batch_size, hidden_size = query.shape
 
-        proj_key = self.key_layer(key.view(-1, hidden_size)).view(batch_size, -1, hidden_size)
+        proj_key = self.key_layer(key.contiguous().view(-1, hidden_size)).view(batch_size, -1, hidden_size)
         # B x N x H
         query = self.query_layer(query)
         # B x H
@@ -96,6 +96,7 @@ class SpatialNet(nn.Module):
         num_filters = vid_feats.shape[2]
         grid_size = vid_feats.shape[3]
         num_cells = grid_size * grid_size
+        device = vid_feats.device
 
         conv_feats = self.conv(vid_feats.view(-1, num_filters, grid_size, grid_size))
         conv_feats = conv_feats.view(batch_size, num_frames, -1, num_cells)
@@ -106,7 +107,7 @@ class SpatialNet(nn.Module):
         vid_feats = torch.transpose(vid_feats, 2, 3)
         # B x N x K^2 x F
 
-        rnn_state = torch.zeros(1, batch_size, self.hidden_size)
+        rnn_state = torch.zeros(1, batch_size, self.hidden_size).to(device)
         # 1 x B x H
         output1 = None
 

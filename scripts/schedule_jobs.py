@@ -2,7 +2,7 @@ import os
 import pdb
 import subprocess as sp
 
-OUTPUT_ROOT='/scratch/cluster/pkar/pytorch-video-caption-rationale/runs/train_s2vt_att_msvd_vgg'
+OUTPUT_ROOT='/scratch/cluster/pkar/pytorch-video-caption-rationale/runs/train_s2vt_msvd_30_frames_resnet18'
 SCRIPT_ROOT='/scratch/cluster/pkar/pytorch-video-caption-rationale/scripts'
 
 mapping_dict = {
@@ -10,27 +10,27 @@ mapping_dict = {
     '__EMAILID__': 'pkar@cs.utexas.edu',
     '__PROJECT__': 'INSTRUCTIONAL',
     # Script parameters
-    '__JOBNAME__': ['lr_1e-4', 'lr_1e-3'],
+    '__JOBNAME__': ['lr_1e-4', 'lr_3e-4'],
     # Algorithm hyperparameters
     '__CODE_ROOT__': '/scratch/cluster/pkar/pytorch-video-caption-rationale',
     '__MODE__': 'train',
     '__DATA_DIR__': '/scratch/cluster/pkar/pytorch-video-caption-rationale/data',
-    '__CORPUS__': 'msvd_vgg',
+    '__CORPUS__': 'msvd',
     '__NWORKERS__': '4',
     '__BSIZE__': '32',
     '__SHUFFLE__': 'true',
     '__GLOVE_EMB_FILE__': 'glove.6B.300d.txt',
     '__IMG_SIZE__': '224',
-    '__VISION_ARCH__': 'resnet34',
+    '__VISION_ARCH__': 'resnet18',
     '__NUM_FRAMES__': '30',
-    '__VID_FEAT_SIZE__': '4096',
-    '__ARCH__': 's2vt-att',
+    '__VID_FEAT_SIZE__': '512',
+    '__ARCH__': 's2vt',
     '__MAX_LEN__': '20',
-    '__DROPOUT_P__': '0.4',
+    '__DROPOUT_P__': '0.3',
     '__HIDDEN_SIZE__': '512',
     '__SCHEDULE_SAMPLE__': 'false',
     '__OPTIM__': 'adam',
-    '__LR__': ['1e-4', '1e-3'],
+    '__LR__': ['1e-4', '3e-4'],
     '__WD__': '5e-4',
     '__MOMENTUM__': '0.9',
     '__EPOCHS__': '1000',
