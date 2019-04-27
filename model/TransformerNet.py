@@ -47,7 +47,6 @@ class MultiHeadAttention(nn.Module):
         k = k.transpose(1,2)
         q = q.transpose(1,2)
         v = v.transpose(1,2)
-        #print ("k size:", k.shape)
 # calculate attention using function we will define next
         scores = attention(q, k, v, self.d_k, mask, self.dropout)
         
@@ -62,10 +61,9 @@ class MultiHeadAttention(nn.Module):
 def attention(q, k, v, d_k, mask=None, dropout=None):
     
     scores = torch.matmul(q, k.transpose(-2, -1)) /  math.sqrt(d_k)
-    #print ("scores shape:", scores.shape)
     if mask is not None:
         mask = mask.unsqueeze(1)
-        #print ("mask shape after unsqueeze:", mask.shape)
+        
         scores = scores.masked_fill(mask == 0, -1e9)
     scores = F.softmax(scores, dim=-1)
     
@@ -105,11 +103,6 @@ class Norm(nn.Module):
         self.bias = nn.Parameter(torch.zeros(self.size))
         self.eps = eps
     def forward(self, x):
-        #print ("x", x.shape)
-        #print ("x.mean(dim=-1, keepdim=True)", x.mean(dim=-1, keepdim=True).shape)
-        #print ("x.std(dim=-1, keepdim=True)",x.std(dim=-1, keepdim=True).shape)
-        #print ("self.bias", self.bias.shape)
-        #print ("(x - x.mean(dim=-1, keepdim=True)) / (x.std(dim=-1, keepdim=True)", ((x - x.mean(dim=-1, keepdim=True)) / (x.std(dim=-1, keepdim=True))).shape)
         norm = self.alpha * (x - x.mean(dim=-1, keepdim=True)) / (x.std(dim=-1, keepdim=True) + self.eps) + self.bias
         return norm
 
@@ -175,11 +168,8 @@ class DecoderLayer(nn.Module):
         self.ff = FeedForward(hidden_size,flag).cuda()
     def forward(self, x, e_outputs, src_mask, trg_mask):
         x2 = self.norm_1(x)
-        #print ("x2 shape:", x2.shape)
-        #print ("trg_mask shape:",trg_mask.shape)
         x = x + self.dropout_1(self.attn_1(x2, x2, x2, trg_mask))
         x2 = self.norm_2(x)
-        #print ("e_outputs shape:", e_outputs.shape)
         x = x + self.dropout_2(self.attn_2(x2, e_outputs, e_outputs,src_mask))
         x2 = self.norm_3(x)
         x = x + self.dropout_3(self.ff(x2))
@@ -244,7 +234,6 @@ class Decoder(nn.Module):
         curr_words = s
         logits = None
         curr_words = self.embedding(curr_words)
-        #print ("curr_words shape:",curr_words.shape )
         #for i in range(self.max_len):
         if self.training:
             for j in range(self.N):
@@ -257,14 +246,10 @@ class Decoder(nn.Module):
             #curr_words = s[:, 0]
             logits = None
             outputs = torch.zeros(e_outputs.shape[0],self.max_len).type_as(s)
-            #print ("outputs shape:", outputs.shape)
-            #print ("sos_tags shape:",sos_tags.shape)
             for x in range(outputs.shape[0]):
                 outputs[x,0] = sos_tags[x]
-            #print (outputs)
             outputs = self.embedding(outputs)
             for i in range(1, self.max_len+1):
-                  #print ("max_len i:", i)
                   trg_mask = np.triu(np.ones((1, i, i)),k=1).astype('uint8')
                   trg_mask = Variable(torch.from_numpy(trg_mask) == 0).cuda()
                   for j in range(self.N):
@@ -291,16 +276,11 @@ def create_masks_trg(self, bsize, s=None, s_len= None):
           trg_mask = torch.zeros(s.shape[0],s.shape[1]).cuda()
           for x in range(s.shape[0]):
               trg_mask[x,0:s_len[x]] = 1
-          #print ("trg_mask:", trg_mask)
-          #print ("s_len:", s_len)
-          #size of sequence length
           trg_mask = trg_mask.type(torch.cuda.ByteTensor)
           trg_mask = trg_mask.unsqueeze(1)
           size = s.shape[1]
           nopeak_mask = np.triu(np.ones((1, size, size)),k=1).astype('uint8')
-          #nopeak_mask = nopeak_mask.astype('uint8')
           nopeak_mask = Variable(torch.from_numpy(nopeak_mask) == 0).cuda()
-          #print("trg_mask shape before nopeak:", trg_mask.shape)
           trg_mask = trg_mask & nopeak_mask
        else:
           
@@ -318,14 +298,8 @@ class Transformer(nn.Module):
         self.decoder = Decoder(glove_loader, hidden_size, dropout_p, max_len, N, heads,flag ='d')
         #self.out = nn.Linear(hidden_size, glove_loader)
     def forward(self, vid_features, s=None, s_len=None):# __trg__, __src_mask__, __trg_mask__):
-        #print ("s:", s)
-        #print ("self.training:", self.training)
         src_mask = create_masks_inp(vid_features)
-        #print ("src_mask shape:", src_mask.shape)
         e_outputs = self.encoder(vid_features,src_mask)
         trg_mask = create_masks_trg(self,vid_features.shape[0], s, s_len)
-        #print ("trg_mask shape:", trg_mask.shape)
         logits = self.decoder(e_outputs,s,src_mask,trg_mask)
-        #print ("logits shape:", logits.shape)
-        #logits = self.out(d_output)
         return logits
