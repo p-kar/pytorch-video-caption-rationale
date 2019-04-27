@@ -244,7 +244,7 @@ class Decoder(nn.Module):
         curr_words = s
         logits = None
         curr_words = self.embedding(curr_words)
-        print ("curr_words shape:",curr_words.shape )
+        #print ("curr_words shape:",curr_words.shape )
         #for i in range(self.max_len):
         if self.training:
             for j in range(self.N):
@@ -264,14 +264,14 @@ class Decoder(nn.Module):
             #print (outputs)
             outputs = self.embedding(outputs)
             for i in range(1, self.max_len+1):
-                  print ("max_len i:", i)
+                  #print ("max_len i:", i)
                   trg_mask = np.triu(np.ones((1, i, i)),k=1).astype('uint8')
                   trg_mask = Variable(torch.from_numpy(trg_mask) == 0).cuda()
                   for j in range(self.N):
                       x = self.layers[j](outputs[:,:i], e_outputs, src_mask, trg_mask)#.unsqueeze(2))
                   x = self.pred_linear(x.squeeze(0))
                   outs = self.norm_out(x)
-                  print ("outs shape:",outs.shape)
+                  #print ("outs shape:",outs.shape)
                   #if logits is None:
                   #   logits = outs.unsqueeze(0)
                   #else:
@@ -319,13 +319,13 @@ class Transformer(nn.Module):
         #self.out = nn.Linear(hidden_size, glove_loader)
     def forward(self, vid_features, s=None, s_len=None):# __trg__, __src_mask__, __trg_mask__):
         #print ("s:", s)
-        print ("self.training:", self.training)
+        #print ("self.training:", self.training)
         src_mask = create_masks_inp(vid_features)
-        print ("src_mask shape:", src_mask.shape)
+        #print ("src_mask shape:", src_mask.shape)
         e_outputs = self.encoder(vid_features,src_mask)
         trg_mask = create_masks_trg(self,vid_features.shape[0], s, s_len)
-        print ("trg_mask shape:", trg_mask.shape)
+        #print ("trg_mask shape:", trg_mask.shape)
         logits = self.decoder(e_outputs,s,src_mask,trg_mask)
-        print ("logits shape:", logits.shape)
+        #print ("logits shape:", logits.shape)
         #logits = self.out(d_output)
         return logits
