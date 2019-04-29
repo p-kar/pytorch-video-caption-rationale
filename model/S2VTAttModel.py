@@ -60,6 +60,23 @@ class Encoder(nn.Module):
         self.rnn = nn.GRU(input_size=input_size, hidden_size=hidden_size, \
             num_layers=1)
 
+    def encode_step(self, vid_feat, rnn_state=None):
+        """
+        Args:
+            vid_feat: Video features (B x V)
+            rnn_state: None if the beginning otherwise the hidden state
+                of rnn1
+        Output:
+            output: Encoder output (1 x B x H)
+            rnn_state: Next RNN state
+        """
+        if rnn_state is not None:
+            output, rnn_state = self.rnn(vid_feat.unsqueeze(0), rnn_state)
+        else:
+            output, rnn_state = self.rnn(vid_feat.unsqueeze(0))
+
+        return output, rnn_state
+
     def forward(self, vid_feats):
         """
         Args:
@@ -198,6 +215,32 @@ class S2VTAttModel(nn.Module):
     def reset_parameter(self):
         """Initialize network weights using Xavier init (with bias 0.01)"""
         self.apply(ixvr)
+
+    def encode_step(self, vid_feat, rnn_state=None):
+        """
+        Args:
+            vid_feat: Video features (B x V)
+            rnn_state: None if the beginning otherwise the hidden state
+                of rnn1
+        Output:
+            output: Encoder output (1 x B x H)
+            rnn_state: Next RNN state
+        """
+        return self.encoder.encode_step(vid_feat, rnn_state)
+
+    def decode(self, encoder_outs, encoder_final, s):
+        """
+        Args:
+            encoder_outs: Encoder outputs (N x B x H)
+            encoder_final: Encoder state final (1 x B x H)
+            s: sentence tokens (B x L) or None if inferencing
+        Output:
+            logits: logits for the full sentence (B x L x vocab_size)
+        """
+        encoder_outs = torch.transpose(encoder_outs, 0, 1)
+        logits = self.decoder(encoder_outs, encoder_final, s)
+
+        return logits
 
     def forward(self, vid_feats, s=None):
         """

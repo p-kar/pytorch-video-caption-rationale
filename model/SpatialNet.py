@@ -32,6 +32,7 @@ class Attention(nn.Module):
             feats: spatial features (B x N x V)
         Output:
             context: attention combined spatial features (B x V)
+            alphas: attention weights normalized between 0 and 1 (B x N)
         """
         batch_size, hidden_size = query.shape
 
@@ -49,7 +50,7 @@ class Attention(nn.Module):
         context = torch.bmm(alphas.unsqueeze(1), feats).squeeze(1)
         # B x V
 
-        return context
+        return context, alphas
 
 class SpatialNet(nn.Module):
     """Spatial attention networks using YOLOv3 as backbone"""
@@ -67,6 +68,8 @@ class SpatialNet(nn.Module):
 
         if arch == 's2vt':
             self.caption_net = S2VTModel(glove_loader, dropout_p, hidden_size, vid_feat_size, max_len)
+        elif arch == 's2vt-att':
+            self.caption_net = S2VTAttModel(glove_loader, dropout_p, hidden_size, vid_feat_size, max_len)
         else:
             raise NotImplementedError('unknown video captioning arch')
 
@@ -90,6 +93,8 @@ class SpatialNet(nn.Module):
                 with <eos> (with optional <pad>)
         Output:
             logits: Logits for next word prediction (B x L x vocab_size)
+            seq_alphas: Attention weights for the YOLO features
+                during encoding (B x N x grid_size x grid_size)
         """
         batch_size = vid_feats.shape[0]
         num_frames = vid_feats.shape[1]
@@ -110,14 +115,15 @@ class SpatialNet(nn.Module):
         rnn_state = torch.zeros(1, batch_size, self.hidden_size).to(device)
         # 1 x B x H
         output1 = None
+        seq_alphas = None
 
         for i in range(num_frames):
             frame_conv_feats = conv_feats[:,i,:,:]
             # B x K^2 x F'
             frame_vid_feats = vid_feats[:,i,:,:]
             # B x K^2 x F
-            context = self.attention(rnn_state.squeeze(0), frame_conv_feats, frame_vid_feats)
-            # B x F
+            context, alphas = self.attention(rnn_state.squeeze(0), frame_conv_feats, frame_vid_feats)
+            # context - B x F
             out, rnn_state = self.caption_net.encode_step(context, rnn_state)
 
             if output1 is None:
@@ -125,7 +131,13 @@ class SpatialNet(nn.Module):
             else:
                 output1 = torch.cat((output1, out), dim=0)
 
+            if seq_alphas is None:
+                seq_alphas = alphas.view(-1, grid_size, grid_size).unsqueeze(1)
+            else:
+                att = alphas.view(-1, grid_size, grid_size).unsqueeze(1)
+                seq_alphas = torch.cat((seq_alphas, att), dim=1)
+
         logits = self.caption_net.decode(output1, rnn_state, s)
 
-        return logits
+        return logits, seq_alphas
 

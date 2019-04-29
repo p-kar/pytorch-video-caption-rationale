@@ -454,6 +454,7 @@ class Darknet(nn.Module):
                     detections = torch.cat((detections, x), 1)
                 
                 outputs[i] = outputs[i-1]
+                return detections
                 
         
         
