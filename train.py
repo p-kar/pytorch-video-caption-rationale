@@ -23,6 +23,7 @@ from train_utils import *
 from nlgeval import NLGEval
 from model.S2VTModel import S2VTModel
 from model.S2VTAttModel import S2VTAttModel
+from model.TransformerNet import Transformer 
 from logger import TensorboardXLogger
 
 use_cuda = torch.cuda.is_available()
@@ -30,7 +31,10 @@ device = torch.device("cuda" if use_cuda else "cpu")
 
 def run_iter(opts, data, model, criterion, return_pred=False):
     vid_feats, s, s_len = data['vid_feats'].to(device), data['sent'].to(device), data['sent_len'].to(device)
-    logits = model(vid_feats, s)
+    if opts.arch == 'transformer':
+       logits = model(vid_feats, s, s_len)
+    else:
+       logits = model(vid_feats,s)
     pred = torch.argmax(logits, dim=2)
     loss = calc_masked_loss(logits, s, s_len, criterion)
     acc = calc_masked_accuracy(logits, s, s_len)
@@ -91,6 +95,8 @@ def train(opts):
         model = S2VTModel(glove_loader, opts.dropout_p, opts.hidden_size, opts.vid_feat_size, opts.max_len)
     elif opts.arch == 's2vt-att':
         model = S2VTAttModel(glove_loader, opts.dropout_p, opts.hidden_size, opts.vid_feat_size, opts.max_len)
+    elif opts.arch == 'transformer':
+        model = Transformer(glove_loader, opts.dropout_p, opts.hidden_size, opts.vid_feat_size, opts.max_len, 2, 8) 
     else:
         raise NotImplementedError('Unknown model architecture')
 
