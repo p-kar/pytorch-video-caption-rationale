@@ -26,6 +26,12 @@ from model.darknet import Darknet
 use_cuda = torch.cuda.is_available()
 device = torch.device('cpu' if not use_cuda else 'cuda')
 
+def str2bool(t):
+    if t.lower() in ['true', 't', '1']:
+        return True
+    else:
+        return False
+
 def letterbox_image(img, inp_dim):
     '''resize image with unchanged aspect ratio using padding'''
     img_w, img_h = img.shape[1], img.shape[0]
@@ -84,56 +90,60 @@ def load_spatial_net_model(args):
 
     return model, glove_loader
 
-def load_yolov3_model(args):
-    print("Loading YOLOv3.....")
-    model = Darknet(os.path.join(args.data_dir, 'yolo/', 'yolov3.cfg'))
-    model.load_weights(os.path.join(args.data_dir, 'yolo/', 'yolov3.weights'))
-    model.net_info["height"] = args.img_size
-    model = model.to(device)
-    model.eval()
-    print("Network successfully loaded")
-    assert args.img_size % 32 == 0
-    assert args.img_size > 32
+def export_video(args, vid_file, model):
+    vid_path = os.path.join(args.video_clips_dir, args.vid_file)
+    frame_list = extract_frames(vid_path, args.img_size, args.num_frames)
+    frame_tensor = torch.stack([prep_image(frame, args.img_size)[0] for frame in frame_list]).to(device)
+    vid_base_name = os.path.splitext(os.path.basename(args.vid_file))[0]
+    vid_feats = np.load(os.path.join(args.data_dir, args.corpus, 'bbox_feats/', vid_base_name + '.npy'))
+    vid_feats = torch.Tensor(vid_feats).to(device).unsqueeze(0)
+    with torch.no_grad():
+        logits, seq_alphas = spatial_model(vid_feats)
 
-    return model
+    seq_alphas = seq_alphas.squeeze(0).cpu().numpy()
+    grid_size = seq_alphas.shape[1]
+    n = args.img_size // grid_size
+    seq_alphas = seq_alphas.repeat(n, axis=1).repeat(n, axis=2)
+
+    vwriter = cv2.VideoWriter(os.path.join(args.out_vid_path, vid_base_name + '.mp4'), \
+        0x7634706d, 2, (args.img_size, args.img_size))
+    for i, frame in enumerate(frame_list):
+        img_tensor, img = prep_image(frame, args.img_size)
+        att = seq_alphas[i]
+        att = (att - att.min()) / (att.max() - att.min())
+        att = (att / 2.0) + 0.5
+        img = np.multiply(img, np.expand_dims(att, axis=2))
+        vwriter.write(np.uint8(img))
+    vwriter.release()
 
 parser = argparse.ArgumentParser(description='Evaluate spatial attention')
 parser.add_argument('--data_dir', default='./data', type=str, help='root directory of the dataset')
 parser.add_argument('--corpus', default='msvd', type=str, help='video captioning corpus to use')
 parser.add_argument('--spatial_net_file', default='./trained_models/best_spatial.net', type=str, help='Trained SpatialNet model')
 parser.add_argument('--vid_file', default='Qp-k0H93iJE_35_39.avi', type=str, help='Video file to visualize')
+parser.add_argument('--all', default=False, type=str2bool, help='process all videos')
 
 args = parser.parse_args()
 spatial_model, glove_loader = load_spatial_net_model(args)
-yolo_model = load_yolov3_model(args)
 
-vid_path = os.path.join(args.data_dir, args.corpus, 'clips/', args.vid_file)
-frame_list = extract_frames(vid_path, args.img_size, args.num_frames)
-frame_tensor = torch.stack([prep_image(frame, args.img_size)[0] for frame in frame_list]).to(device)
-vid_base_name = os.path.splitext(os.path.basename(args.vid_file))[0]
-vid_feats = np.load(os.path.join(args.data_dir, args.corpus, 'bbox_feats/', vid_base_name + '.npy'))
-vid_feats = torch.Tensor(vid_feats).to(device).unsqueeze(0)
-with torch.no_grad():
-    logits, seq_alphas = spatial_model(vid_feats)
-    detections = yolo_model(frame_tensor, torch.cuda.is_available())
-    pdb.set_trace()
+out_vid_path = os.path.join(args.data_dir, args.corpus, 'out_clips/')
+if os.path.exists(out_vid_path):
+    shutil.rmtree(out_vid_path)
+os.makedirs(out_vid_path)
+args.out_vid_path = out_vid_path
+args.corpus_dir = os.path.join(args.data_dir, args.corpus)
+args.video_clips_dir = os.path.join(args.corpus_dir, 'clips/')
 
-seq_alphas = seq_alphas.squeeze(0).cpu().numpy()
-grid_size = seq_alphas.shape[1]
-n = args.img_size // grid_size
-seq_alphas = seq_alphas.repeat(n, axis=1).repeat(n, axis=2)
-
-vwriter = cv2.VideoWriter('tmp.mp4', \
-    0x7634706d, \
-    2, (args.img_size, args.img_size))
-
-for i, frame in enumerate(frame_list):
-    img_tensor, img = prep_image(frame, args.img_size)
-    att = seq_alphas[i]
-    att = (att - att.min()) / (att.max() - att.min())
-    att = (att / 2.0) + 0.5
-    img = np.multiply(img, np.expand_dims(att, axis=2))
-    vwriter.write(np.uint8(img))
-
-vwriter.release()
+if not args.all:
+    export_video(args, args.vid_file, spatial_model)
+else:
+    if args.corpus == 'msvd':
+        file_ext = '.avi'
+    elif args.corpus == 'msrvtt':
+        file_ext = '.mp4'
+    else:
+        raise NotImplementedError('unknown corpus')
+    video_clips = [f for f in os.listdir(args.video_clips_dir) if f.endswith(file_ext)]
+    for video in tqdm(video_clips):
+        export_video(args, video, spatial_model)
 
