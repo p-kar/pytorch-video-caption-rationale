@@ -126,7 +126,7 @@ class PositionalEncoder(nn.Module):
     
     def forward(self, x):
         # make embeddings relatively larger
-        x = x * math.sqrt(self.hidden_size)
+        x = x * math.sqrt(x.shape[1])#self.hidden_size)
         #add constant to embedding
         seq_len = x.size(1)
         x = x + Variable(self.pe[:,:seq_len], \
@@ -184,7 +184,7 @@ class Encoder(nn.Module):
         super().__init__()
         self.N = N
         #self.embed = Embedder(vocab_size, hidden_size)
-        self.pe = PositionalEncoder(hidden_size)
+        self.pe = PositionalEncoder(input_size)
         self.layers = get_clones(EncoderLayer(hidden_size, heads,flag), N)
         self.norm = Norm(hidden_size,flag)
     def forward(self, vid_features, mask):
@@ -215,7 +215,7 @@ class Decoder(nn.Module):
         self.embedding.load_state_dict({'weight': torch.Tensor(word_vectors)})
 
         #self.embed = Embedder(vocab_size, hidden_size)
-        self.pe = PositionalEncoder(hidden_size)
+        self.pe = PositionalEncoder(self.embed_size)
         self.layers = get_clones(DecoderLayer(hidden_size, heads,flag), N)
         self.norm = Norm(hidden_size,flag)
         self.norm_out = Norm(hidden_size,flag)
