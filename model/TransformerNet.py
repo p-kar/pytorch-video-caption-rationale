@@ -63,7 +63,6 @@ def attention(q, k, v, d_k, mask=None, dropout=None):
     scores = torch.matmul(q, k.transpose(-2, -1)) /  math.sqrt(d_k)
     if mask is not None:
         mask = mask.unsqueeze(1)
-        
         scores = scores.masked_fill(mask == 0, -1e9)
     scores = F.softmax(scores, dim=-1)
     
@@ -93,11 +92,11 @@ class Norm(nn.Module):
     def __init__(self, hidden_size, flag, eps = 1e-6):
         super().__init__()
         if flag == 'e':
-           self.size = 4096#hidden_size
+            self.size = 4096#hidden_size
         elif flag == 'd':
-           self.size = 300
+            self.size = 300
         else:
-           self.size = 7893 
+            raise NotImplementedError()
         # create two learnable parameters to calibrate normalisation
         self.alpha = nn.Parameter(torch.ones(self.size))
         self.bias = nn.Parameter(torch.zeros(self.size))
@@ -127,7 +126,7 @@ class PositionalEncoder(nn.Module):
     
     def forward(self, x):
         # make embeddings relatively larger
-        x = x * math.sqrt(self.d_model)
+        x = x * math.sqrt(self.hidden_size)
         #add constant to embedding
         seq_len = x.size(1)
         x = x + Variable(self.pe[:,:seq_len], \
@@ -185,16 +184,18 @@ class Encoder(nn.Module):
         super().__init__()
         self.N = N
         #self.embed = Embedder(vocab_size, hidden_size)
-        #self.pe = PositionalEncoder(hidden_size)
+        self.pe = PositionalEncoder(hidden_size)
         self.layers = get_clones(EncoderLayer(hidden_size, heads,flag), N)
         self.norm = Norm(hidden_size,flag)
     def forward(self, vid_features, mask):
         #x = self.embed(src)
-        #x = self.pe(x)
+        #
         #vid_feats = vid_feats.transpose(0, 1)
         # B x N x V
+        x = vid_features
+        x = self.pe(x)
         for i in range(self.N):
-            x = self.layers[i](vid_features,mask)
+            x = self.layers[i](x,mask)
         # returning encoder_outs
         return self.norm(x)
     
@@ -214,10 +215,10 @@ class Decoder(nn.Module):
         self.embedding.load_state_dict({'weight': torch.Tensor(word_vectors)})
 
         #self.embed = Embedder(vocab_size, hidden_size)
-        #self.pe = PositionalEncoder(hidden_size)
+        self.pe = PositionalEncoder(hidden_size)
         self.layers = get_clones(DecoderLayer(hidden_size, heads,flag), N)
         self.norm = Norm(hidden_size,flag)
-        self.norm_out = Norm(hidden_size,'no')
+        self.norm_out = Norm(hidden_size,flag)
         self.pred_linear = nn.Sequential(nn.Dropout(p=dropout_p), nn.Linear(300, self.vocab_size))
 
     def forward(self, e_outputs, s, src_mask, trg_mask):
@@ -231,75 +232,68 @@ class Decoder(nn.Module):
         sos_tags = sos_tags.to(device)
         if not self.training:
            s = sos_tags
-        curr_words = s
         logits = None
-        curr_words = self.embedding(curr_words)
-        #for i in range(self.max_len):
+
         if self.training:
+            x = self.embedding(s)
+            x = self.pe(x)
             for j in range(self.N):
-                x = self.layers[j](curr_words, e_outputs, src_mask, trg_mask)#.unsqueeze(2))
-            x = self.pred_linear(x.squeeze(0))
-            outs = self.norm_out(x)
-            logits = outs
+                x = self.layers[j](x, e_outputs, src_mask, trg_mask)
+            x = self.norm_out(x)
+            logits = self.pred_linear(x)
         # B x L x vocab_size
         else:
-            #curr_words = s[:, 0]
+            curr_words = s[:, 0]
+            outputs = torch.zeros((batch_size, self.max_len)).long().to(device)
             logits = None
-            outputs = torch.zeros(e_outputs.shape[0],self.max_len).type_as(s)
-            for x in range(outputs.shape[0]):
-                outputs[x,0] = sos_tags[x]
-            outputs = self.embedding(outputs)
             for i in range(1, self.max_len+1):
+                  outputs[:,i - 1] = curr_words
+                  x = self.embedding(outputs[:,:i])
+                  x = self.pe(x)
                   trg_mask = np.triu(np.ones((1, i, i)),k=1).astype('uint8')
-                  trg_mask = Variable(torch.from_numpy(trg_mask) == 0).cuda()
+                  trg_mask = (torch.from_numpy(trg_mask) == 0).to(device)
                   for j in range(self.N):
-                      x = self.layers[j](outputs[:,:i], e_outputs, src_mask, trg_mask)#.unsqueeze(2))
-                  x = self.pred_linear(x.squeeze(0))
-                  outs = self.norm_out(x)
-                  #print ("outs shape:",outs.shape)
-                  #if logits is None:
-                  #   logits = outs.unsqueeze(0)
-                  #else:
-                  #   logits = torch.cat((logits, outs.unsqueeze(0)), dim=0)
-                  #curr_words = torch.argmax(outs, dim=1)
-            #logits = torch.transpose(logits, 0, 1).contiguous()
-            logits = outs
+                      x = self.layers[j](x, e_outputs, src_mask, trg_mask)
+                  x = self.norm_out(x)
+                  outs = self.pred_linear(x[:,i - 1,:])
+                  if logits is None:
+                    logits = outs.unsqueeze(1)
+                  else:
+                    logits = torch.cat((logits, outs.unsqueeze(1)), dim=1)
+                  curr_words = torch.argmax(outs, dim=1).long()
+
         return logits
 
 def create_masks_inp(vid_features):
-        input_msk = torch.ones(vid_features.shape[0],vid_features.shape[1]).cuda()
-        input_msk = input_msk.unsqueeze(1)
+        input_msk = torch.ones(vid_features.shape[:2]).unsqueeze(1).to(vid_features.device)
         return input_msk
 
-def create_masks_trg(self, bsize, s=None, s_len= None):
-       if self.training:
-          trg_mask = torch.zeros(s.shape[0],s.shape[1]).cuda()
-          for x in range(s.shape[0]):
-              trg_mask[x,0:s_len[x]] = 1
-          trg_mask = trg_mask.type(torch.cuda.ByteTensor)
-          trg_mask = trg_mask.unsqueeze(1)
-          size = s.shape[1]
-          nopeak_mask = np.triu(np.ones((1, size, size)),k=1).astype('uint8')
-          nopeak_mask = Variable(torch.from_numpy(nopeak_mask) == 0).cuda()
-          trg_mask = trg_mask & nopeak_mask
-       else:
-          
-          trg_mask = np.triu(np.ones((bsize, 1, 1)),k=1).astype('uint8')
-          trg_mask= Variable(torch.from_numpy(trg_mask) == 0).cuda()
-       return trg_mask 
+def create_masks_trg(self, s, s_len):
+    if self.training:
+        assert s is not None
+        device = s.device
+        trg_mask = torch.arange(s.shape[1]).expand_as(s).to(device)
+        trg_mask = trg_mask < s_len.unsqueeze(1)
+        trg_mask = trg_mask.to(device).unsqueeze(1)
+        size = s.shape[1]
 
+        nopeak_mask = np.triu(np.ones((1, size, size)),k=1).astype('uint8')
+        nopeak_mask = (torch.from_numpy(nopeak_mask) == 0).to(device)
+        trg_mask = trg_mask & nopeak_mask
+    else:
+        return None
 
-
+    return trg_mask 
 
 class Transformer(nn.Module):
     def __init__(self, glove_loader, dropout_p, hidden_size,vid_feat_size, max_len, N, heads):
         super().__init__()
         self.encoder = Encoder(vid_feat_size, hidden_size, N, heads,flag = 'e')
         self.decoder = Decoder(glove_loader, hidden_size, dropout_p, max_len, N, heads,flag ='d')
-        #self.out = nn.Linear(hidden_size, glove_loader)
-    def forward(self, vid_features, s=None, s_len=None):# __trg__, __src_mask__, __trg_mask__):
+
+    def forward(self, vid_features, s=None, s_len=None):
         src_mask = create_masks_inp(vid_features)
         e_outputs = self.encoder(vid_features,src_mask)
-        trg_mask = create_masks_trg(self,vid_features.shape[0], s, s_len)
+        trg_mask = create_masks_trg(self, s, s_len)
         logits = self.decoder(e_outputs,s,src_mask,trg_mask)
         return logits
