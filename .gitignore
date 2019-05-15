@@ -142,6 +142,7 @@ data/**/*.csv
 data/**/*.npy
 *.zip
 *.weights
+*.mp4
 
 logs/
 runs/

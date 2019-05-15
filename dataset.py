@@ -91,7 +91,7 @@ class MSVideoDescriptionDataset(Dataset):
 class MSRVideoToTextDataset(Dataset):
     """Microsoft Research - Video To Text Dataset"""
 
-    def __init__(self, root, split, glove_loader, num_frames, maxlen, feat_type='cnn'):
+    def __init__(self, root, corpus, split, glove_loader, num_frames, maxlen, feat_type='cnn'):
         assert(corpus == 'msrvtt')
         self.word_to_index = glove_loader.word_to_index
         self.split = split
@@ -123,7 +123,7 @@ class MSRVideoToTextDataset(Dataset):
         # Extract ImageNet features for video frames
         video_key = self.captions[idx]['video_id']
         vid_feats = np.load(os.path.join(self.vid_feat_dir, video_key + '.npy'))
-        vid_feats_padding = np.zeros((max(0, self.num_frames - vid_feats.shape[0]), vid_feats.shape[1]))
+        vid_feats_padding = np.zeros((max(0, self.num_frames - vid_feats.shape[0]), *vid_feats.shape[1:]))
         vid_feats = np.concatenate((vid_feats, vid_feats_padding), axis=0)[:self.num_frames, :]
         vid_feats = torch.FloatTensor(vid_feats)
         # Get a random caption for this video

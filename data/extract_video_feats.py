@@ -29,18 +29,6 @@ def load_frame(frame, img_size):
         normalize])
     return transform(frame)
 
-# def extract_frames(video_file, dst):
-#     with open(os.devnull, "w") as ffmpeg_log:
-#         os.makedirs(dst)
-#         video_to_frames_command = ["ffmpeg",
-#                                    # (optional) overwrite output file if it exists
-#                                    '-y',
-#                                    '-i', video_file,  # input file
-#                                    # '-vf', "scale=400:300",  # input file
-#                                    '-qscale:v', "2",  # quality for JPEG
-#                                    '{0}/%06d.jpg'.format(dst)]
-#         subprocess.call(video_to_frames_command, stdout=ffmpeg_log, stderr=ffmpeg_log)
-
 def preprocess_frame(image, target_height, target_width):
 
     if len(image.shape) == 2:
