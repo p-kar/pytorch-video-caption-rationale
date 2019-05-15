@@ -96,7 +96,8 @@ def train(opts):
     elif opts.arch == 's2vt-att':
         model = S2VTAttModel(glove_loader, opts.dropout_p, opts.hidden_size, opts.vid_feat_size, opts.max_len)
     elif opts.arch == 'transformer':
-        model = Transformer(glove_loader, opts.dropout_p, opts.hidden_size, opts.vid_feat_size, opts.max_len, 2, 8) 
+        #inputs are number of layers and number of heads (last two)
+        model = Transformer(glove_loader, opts.dropout_p, opts.hidden_size, opts.vid_feat_size, opts.max_len, 6, 8) 
     else:
         raise NotImplementedError('Unknown model architecture')
 
